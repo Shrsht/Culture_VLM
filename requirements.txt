@@ -1,0 +1,13 @@
+country_converter
+datasets
+Pillow
+accelerate
+
+# Force NumPy < 2.0 to avoid _ARRAY_API errors with PyTorch
+numpy<2.0.0
+
+# Ensure PyTorch is compatible with your CUDA or CPU setup
+torch==2.2.2
+
+# Use the latest development version of Transformers to support multi_modality
+git+https://github.com/huggingface/transformers.git
