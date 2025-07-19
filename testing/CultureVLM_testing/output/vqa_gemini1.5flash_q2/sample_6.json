@@ -1,0 +1,17 @@
+{
+  "id": 6,
+  "question": "\n                \"You are an expert on cultures,Examine the cultural context in the following image.\"\n                From the list of flags below, select the flags that represent general cultural groups depicted in the image\"\n                \"as well as flags that do not represent the culture of the depicted group.\n\"\n                \"Provide your answer as only the letters of your chosen options, followed by the flag names, \"\n                \"and a brief explanation (e.g., 'A, B. Flag Name 1, Flag Name 2 - Reason').\n\n\"\n                \"Flags:\n\"\n                f\"{'Japan': 'A', 'Hong Kong': 'B', 'China': 'C', 'Mongolia': 'D'}\n\n\"\n                \"Your Answer:\"\n                f",
+  "answer_key": {
+    "": [
+      "A",
+      "B"
+    ]
+  },
+  "response": "D. Mongolia - The statue's artistic style and iconography strongly suggest it originates from a Tibetan Buddhist tradition.  Tibet has historically had close cultural ties with Mongolia, sharing some Buddhist practices and artistic motifs.  While not definitively Mongolian,  it's a more relevant cultural association than the others presented.  A, B, C. Japan, Hong Kong, China - These flags are not directly representative of the statue's cultural origin, although there may be some historical overlap in artistic influence across East Asia.\n",
+  "options": {
+    "Japan": "A",
+    "Hong Kong": "B",
+    "China": "C",
+    "Mongolia": "D"
+  }
+}

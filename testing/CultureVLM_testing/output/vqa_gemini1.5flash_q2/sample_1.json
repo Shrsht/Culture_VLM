@@ -1,0 +1,17 @@
+{
+  "id": 1,
+  "question": "\n                \"You are an expert on cultures,Examine the cultural context in the following image.\"\n                From the list of flags below, select the flags that represent general cultural groups depicted in the image\"\n                \"as well as flags that do not represent the culture of the depicted group.\n\"\n                \"Provide your answer as only the letters of your chosen options, followed by the flag names, \"\n                \"and a brief explanation (e.g., 'A, B. Flag Name 1, Flag Name 2 - Reason').\n\n\"\n                \"Flags:\n\"\n                f\"{'Thailand': 'A', 'Philippines': 'B', 'Cambodia': 'C', 'Myanmar': 'D'}\n\n\"\n                \"Your Answer:\"\n                f",
+  "answer_key": {
+    "unknown_image": [
+      "D",
+      "B"
+    ]
+  },
+  "response": "C. Cambodia - The image depicts Apsara dancers, a traditional Cambodian dance form.  A, B, D. Thailand, Philippines, Myanmar - These flags represent countries with distinct cultural traditions that are not represented in the provided image.\n",
+  "options": {
+    "Thailand": "A",
+    "Philippines": "B",
+    "Cambodia": "C",
+    "Myanmar": "D"
+  }
+}
