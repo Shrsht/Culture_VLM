@@ -2,12 +2,15 @@ country_converter
 datasets
 Pillow
 accelerate
-
-# Force NumPy < 2.0 to avoid _ARRAY_API errors with PyTorch
 numpy<2.0.0
-
-# Ensure PyTorch is compatible with your CUDA or CPU setup
+matplotlib
+torchvision
+tiktoken
+einops 
+transformers_stream_generator
 torch==2.2.2
-
-# Use the latest development version of Transformers to support multi_modality
-git+https://github.com/huggingface/transformers.git
+transformers @ https://github.com/huggingface/transformers/archive/6017f5e8ed33d48096cdf8630d1cc7cbf2550c90.zip
+deepseek_vl @ git+https://github.com/deepseek-ai/DeepSeek-VL.git
+python-dotenv
+google-generativeai
+openai

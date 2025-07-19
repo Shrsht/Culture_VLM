@@ -1,0 +1,64 @@
+import datasets
+from datasets import load_dataset
+import os
+import country_converter as coco
+
+import random
+from ast import literal_eval
+
+
+def generate_q1_options(input_row:int,ans_geography: str):
+
+  answer_key = {}
+  options = []
+  mcq_dict = {}
+
+
+  countries = literal_eval(image_dataset['train'][input_image]['countries'])
+  cultures = literal_eval(image_dataset['train'][input_image]['cultures'])
+  subregions = literal_eval(image_dataset['train'][input_image]['un_subregion'])
+  continents = literal_eval(image_dataset['train'][input_image]['continents'])
+
+  if ans_geography == 'continent':
+    correct_option = random.choice(list(set(continent_dict[continents[0]]) - set(countries)))
+    answer_key[input_image] = [correct_option]
+
+  elif ans_geography == 'subregion':
+    correct_option = random.choice(list(set(subregion_dict[subregions[0]]) - set(countries)))
+    answer_key[input_image] = [correct_option]
+  else:
+    print('Invalid geography')
+    return
+
+  if len(countries) == 1:
+
+    choice_1 = countries[0]
+    choice_2 = correct_option
+    #options[input_image] = [choice_1,choice_2]
+    options = [choice_1,choice_2]
+
+
+  if len(countries) == 2:
+
+    choice_1 = countries[0]
+    choice_2 = countries[1]
+    choice_3 = correct_option
+
+    options = [choice_1,choice_2,choice_3]
+
+  if len(countries) >= 3:
+
+    choice_1 = random.choice(countries)
+    choice_2 = random.choice(list(set(countries) - set([choice_1])))
+    choice_3 = random.choice(list(set(countries) - set([choice_1, choice_2])))
+    choice_4 = correct_option
+
+    options = [choice_1,choice_2,choice_3,choice_4]
+
+  random.shuffle(options)
+  for i, option in enumerate(options):
+    mcq_dict[option] = chr(65 + i)
+
+  answer_key[input_image] = mcq_dict[correct_option]
+
+  return mcq_dict, answer_key

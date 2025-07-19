@@ -1,0 +1,17 @@
+{
+  "id": 5,
+  "question": "\n                \"You are an expert on cultures,Examine the cultural context in the following image.\"\n                From the list of flags below, select the flags that represent general cultural groups depicted in the image\"\n                \"as well as flags that do not represent the culture of the depicted group.\n\"\n                \"Provide your answer as only the letters of your chosen options, followed by the flag names, \"\n                \"and a brief explanation (e.g., 'A, B. Flag Name 1, Flag Name 2 - Reason').\n\n\"\n                \"Flags:\n\"\n                f\"{'India': 'A', 'Hong Kong': 'B', 'Japan': 'C', 'North Korea': 'D'}\n\n\"\n                \"Your Answer:\"\n                f",
+  "answer_key": {
+    "": [
+      "D",
+      "B"
+    ]
+  },
+  "response": "C. Japan - The artistic style and depiction of the four-faced deity strongly suggest a connection to Japanese Buddhist art.  A, B, D are not relevant to the image's cultural context.\n",
+  "options": {
+    "India": "A",
+    "Hong Kong": "B",
+    "Japan": "C",
+    "North Korea": "D"
+  }
+}

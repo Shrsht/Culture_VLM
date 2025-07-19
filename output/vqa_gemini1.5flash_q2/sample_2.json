@@ -1,0 +1,17 @@
+{
+  "id": 2,
+  "question": "\n                \"You are an expert on cultures,Examine the cultural context in the following image.\"\n                From the list of flags below, select the flags that represent general cultural groups depicted in the image\"\n                \"as well as flags that do not represent the culture of the depicted group.\n\"\n                \"Provide your answer as only the letters of your chosen options, followed by the flag names, \"\n                \"and a brief explanation (e.g., 'A, B. Flag Name 1, Flag Name 2 - Reason').\n\n\"\n                \"Flags:\n\"\n                f\"{'Chile': 'A', 'Argentina': 'B', 'China': 'C', 'Brazil': 'D'}\n\n\"\n                \"Your Answer:\"\n                f",
+  "answer_key": {
+    "": [
+      "A",
+      "B"
+    ]
+  },
+  "response": "B, D. Argentina, Brazil - The image shows a young person in what appears to be a food court in a South American shopping mall.  The architectural style and the general atmosphere strongly suggest a South American location. While the food could be interpreted as pan-Asian, the context points toward the mall being in either Brazil or Argentina, given the image's visual cues.  China and Chile are not indicated by the visual context.\n",
+  "options": {
+    "Chile": "A",
+    "Argentina": "B",
+    "China": "C",
+    "Brazil": "D"
+  }
+}
