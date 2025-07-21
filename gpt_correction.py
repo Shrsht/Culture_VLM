@@ -1,3 +1,28 @@
+
+import re
+
+def extract_formatted_answer(response: str) -> str:
+    """Extracts an answer like 'A. Flag Name' from a string with a more robust regex."""
+    # Prioritize searching in the text after "Your Answer:"
+    search_text = response.split("Your Answer:")[-1]
+
+    # Regex to find patterns like: A. Flag Name, (A) Flag Name, A) Flag Name, A - Flag Name
+    match = re.search(
+        r"(?:\b|\()([A-Z])(?:\)|\.|-)?\s+([A-Za-z\s\-]+)",
+        search_text
+    )
+    
+    if match:
+        # Reconstruct the matched group to ensure consistent "A. Flag Name" format
+        letter = match.group(1)
+        name = match.group(2).strip()
+        # Avoid matching the example from the prompt
+        if "Flag Name" in name:
+            return "Invalid"
+        return f"{letter}. {name}"
+        
+    return "Invalid"
+
 import os
 import torch
 import json
@@ -14,21 +39,24 @@ import google.generativeai as genai
 import openai
 import base64
 from io import BytesIO
+import textwrap
 
 # Set GPU device explicitly
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"  # Change as needed
+os.environ["TRANSFORMERS_CACHE"] = "/data/hf_cache"
+os.environ["HF_HOME"] = "/data/hf_cache"
 
 class Config:
     #MODEL_NAME = "deepseek-ai/deepseek-vl2-small"
     #MODEL_NAME = "llava-hf/llava-1.5-7b-hf"
-    #MODEL_NAME = "Qwen/Qwen-VL-Chat"
+    MODEL_NAME = "Qwen/Qwen-VL-Chat"
     #MODEL_NAME = 'gemini-1.5-flash'
-    MODEL_NAME = "gpt-4o"
-    MODEL_CACHE_DIR = "./model_cache"
+    #MODEL_NAME = "gpt-4o"
+    MODEL_CACHE_DIR = "/data/model_cache"
     QUESTION_TYPE = 1
     BASE_DIR = "./data"
-    OUTPUT_BASE_DIR = "./output/vqa_gpt4o_q1"
-    N_SAMPLES = 100
+    OUTPUT_BASE_DIR = "./output/gpt_test_qwen_q1"
+    N_SAMPLES = 5
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
@@ -67,8 +95,8 @@ def infer(model, processor, image: Image.Image, prompt: str):
     if image.mode != "RGB":
         image = image.convert("RGB")
 
-    # Format prompt for vision-language alignment
-    formatted_prompt = "<image>\n" + prompt.strip()
+    # Format prompt for vision-language alignment (Llava specific)
+    formatted_prompt = f"USER: <image>\n{prompt.strip()}\nASSISTANT:"
 
     # Process input
     inputs = processor(
@@ -82,14 +110,18 @@ def infer(model, processor, image: Image.Image, prompt: str):
         output = model.generate(**inputs, max_new_tokens=50)
 
     decoded = processor.batch_decode(output, skip_special_tokens=True)[0]
-    return decoded
+
+    # Clean the output by removing image tokens
+    cleaned_decoded = decoded.replace("<image>", "").replace("</image>", "").strip()
+
+    return extract_formatted_answer(cleaned_decoded)
 
 def infer_gemini(model, image: Image.Image, prompt: str):
     if image.mode != "RGB":
         image = image.convert("RGB")
     
     response = model.generate_content([prompt, image])
-    return response.text
+    return extract_formatted_answer(response.text)
 
 def infer_openai(model, image: Image.Image, prompt: str, model_name: str):
     if image.mode != "RGB":
@@ -117,7 +149,7 @@ def infer_openai(model, image: Image.Image, prompt: str, model_name: str):
         ],
         max_tokens=300,
     )
-    return response.choices[0].message.content
+    return extract_formatted_answer(response.choices[0].message.content)
 
 
 def main():
@@ -143,17 +175,18 @@ def main():
                     continue
                 composed_image = composer.combine_with_main_image(item["image"], mcq_dict) ##LINKS TO COMPOSER.PY
 
-                prompt_q1 = f"""
-                "You are an expert on cultures, Given an image and a set of flags, connect the flags to" 
-                "the culture depicted given image and how well the flag represents a particular culture." 
-                "Examine the cultural context in the following image. From the list of flags below, select" 
-                "the flag that least represents the culture depicted in this particular image "
-                "Provide your answer as only the letter of your chosen option, followed by the flag name,"
-                "(e.g., 'A. Flag Name').\n\n"
-                "Flags:\n"
-                "{mcq_dict} \n\n"
-                "Your Answer:"
-                f"""
+                prompt_q1 = f'''You are an expert on cultures, Given an image and a set of flags, connect the flags to
+the culture depicted given image and how well the flag represents a particular culture.
+Examine the cultural context in the following image. From the list of flags below, select
+the flag that least represents the culture depicted in this particular image
+Provide your answer as only the letter of your chosen option, followed by the flag name,
+(e.g., 'A. Flag Name').
+
+Flags:
+{mcq_dict}
+
+Your Answer:
+'''
 
                 if "gemini" in cfg.MODEL_NAME:
                     response = infer_gemini(model, composed_image, prompt_q1)
@@ -185,17 +218,15 @@ def main():
                     continue
                 composed_image = composer.combine_with_main_image(item["image"], mcq_dict) ##LINKS TO COMPOSER.PY
 
-                prompt_q2 = f"""
-                "You are an expert on cultures,Examine the cultural context in the following image."
-                From the list of flags below, select the flags that represent general cultural groups depicted in the image"
-                "as well as flags that do not represent the culture of the depicted group.\n"
-                "Provide your answer as only the letters of your chosen options, followed by the flag names, "
-                "and a brief explanation (e.g., 'A, B. Flag Name 1, Flag Name 2 - Reason').\n\n"
-                "Flags:\n"
-                f"{mcq_dict}\n\n"
-                "Your Answer:"
-                f"""
+                prompt_q2 = f'''You are an expert on cultures,Examine the cultural context in the following image.
+From the list of flags below, select the flags that represent general cultural groups depicted in the image as well as flags that do not represent the culture of the depicted group.
+Provide your answer as only the letter of your chosen option, followed by the flag name, (e.g., 'A. Flag Name').
 
+Flags:
+{mcq_dict}
+
+Your Answer:
+'''
                 if "gemini" in cfg.MODEL_NAME:
                     response = infer_gemini(model, composed_image, prompt_q2)
                 elif "gpt" in cfg.MODEL_NAME:
@@ -219,4 +250,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
