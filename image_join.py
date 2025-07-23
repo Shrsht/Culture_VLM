@@ -3,15 +3,17 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 class FlagComposer:
-    def __init__(self, flag_dataset,size=(128, 128),font=None):
+    def __init__(self, flag_dataset, size=(128, 128), font_path=None):
         self.flag_dataset = flag_dataset
         self.size = size
-        self.font = font or ImageFont.load_default()
+        # Use a default, commonly available TrueType font if none is provided.
+        # On macOS, Arial is common. On Linux, DejaVuSans is a good default.
+        self.font_path = font_path or "/System/Library/Fonts/Supplemental/Arial.ttf"
 
     # ---------- public API ----------
 
     def combine_with_main_image(self, main_image: Image.Image, mcq_dict: dict,
-                                margin: int = 12, label_h: int = 22) -> Image.Image:
+                                margin: int = 12, label_h: int = 30) -> Image.Image: # Increased default label height
         """Return a new image with a row of four flags centred under *main_image*."""
         flag_row = self._create_flag_row(mcq_dict,
                                          target_width=main_image.width,
@@ -36,10 +38,6 @@ class FlagComposer:
                 return row['image'].convert("RGB").resize(self.size)
         print(f"DEBUG: Flag not found for '{country}'")
         return None
-        return None
-        # record = next(r for r in self.flag_dataset['train']
-        #               if r['country_name'] == country)
-        # return record['image'].convert("RGB")
 
     def _create_flag_row(self, mcq_dict: dict, *,
                          target_width: int, margin: int, label_h: int) -> Image.Image:
@@ -55,17 +53,15 @@ class FlagComposer:
         
         flags = [self._get_flag(c) for c in countries]
         
-        # Filter out flags that were not found, and their corresponding labels
         valid_pairs = [(f, l) for f, l in zip(flags, labels) if f is not None]
         
-        # If no flags were found, return an empty image row
         if not valid_pairs:
             return Image.new("RGB", (target_width, label_h + margin), (255, 255, 255))
 
         flags, labels = zip(*valid_pairs)
         num_flags = len(flags)
 
-        # 2 ▸ Decide the flag size: fill row but keep margins
+        # 2 ▸ Decide the flag size and font size
         slot_w = (target_width - margin * (num_flags + 1)) // num_flags
         slot_h_max = int(slot_w * 2/3)
         resized_flags = [ImageOps.contain(im, (slot_w, slot_h_max)) for im in flags]
@@ -75,23 +71,29 @@ class FlagComposer:
         row = Image.new("RGB", (target_width, row_h), (255, 255, 255))
         draw = ImageDraw.Draw(row)
 
-        # 3 ▸ Paste each flag centred in its slot with the correct letter
+        # Dynamically calculate font size to fit the label height
+        try:
+            font_size = int(label_h * 0.8) # Use 80% of label height for the font
+            font = ImageFont.truetype(self.font_path, size=font_size)
+        except IOError:
+            print(f"Warning: Font not found at {self.font_path}. Using default font.")
+            font = ImageFont.load_default()
+
+        # 3 ▸ Paste each flag and its label
         x = margin
         for im, label in zip(resized_flags, labels):
-            # Center flag in its slot
             cx = x + (slot_w - im.width) // 2
             row.paste(im, (cx, 0))
             
-            # Center label text under the flag
-            if hasattr(draw, 'textlength'):
-                # For Pillow >= 10.0.0
-                label_width = draw.textlength(label, font=self.font)
-            else:
-                # For older versions of Pillow
-                label_width = draw.textsize(label, font=self.font)[0]
-            
+            # Use getbbox for modern Pillow versions to get accurate text bounding box
+            if hasattr(font, 'getbbox'):
+                bbox = font.getbbox(label)
+                label_width = bbox[2] - bbox[0]
+            else: # Fallback for older versions
+                label_width, _ = draw.textsize(label, font=font)
+
             tx = x + (slot_w - label_width) // 2
-            draw.text((tx, flag_h + margin // 2), label, font=self.font, fill=(0, 0, 0))
+            draw.text((tx, flag_h + margin // 2), label, font=font, fill=(0, 0, 0))
             x += slot_w + margin
 
         return row

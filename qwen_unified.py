@@ -222,6 +222,12 @@ Your Answer:"""
                 continue
 
             composed_image = composer.combine_with_main_image(item["image"], mcq_dict)
+            
+            # --- Save the generated image ---
+            image_save_dir = Path("./generated_flags")
+            image_save_dir.mkdir(parents=True, exist_ok=True)
+            composed_image.save(image_save_dir / f"sample_{idx}_q{cfg.QUESTION_TYPE}.png")
+
             # --- Prompt Generation ---
             # Qwen requires a simpler prompt format than other models.
             if "Qwen" in cfg.MODEL_NAME:
