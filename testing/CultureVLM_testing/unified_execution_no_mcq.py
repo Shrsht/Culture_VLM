@@ -151,9 +151,7 @@ def main():
     logger.info(f"Datasets loaded. Running VQA for {cfg.N_SAMPLES} samples.")
 
     # --- Prompt Template ---
-    prompt_template = """You are an expert on cultures. Examine the cultural context in the following image, which also contains several flags. Identify the flag that least represents the culture depicted in the main image.
-
-Your Answer:"""
+    prompt_template = """You are an expert on cultures. Examine the cultural context in the following image, which also contains several flags. Identify the flag that least represents the culture depicted in the main image.\n\nYour Answer:"""
 
     for idx in tqdm(range(cfg.N_SAMPLES), desc="Processing Samples"):
         try:
