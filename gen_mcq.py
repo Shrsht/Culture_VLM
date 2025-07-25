@@ -1,169 +1,187 @@
+
 import os
-import io
 import random
-import PIL
 from ast import literal_eval
-from dotenv import load_dotenv
-from PIL import Image
-#import google.generativeai as genai
 from datasets import load_dataset
 import country_converter as coco
+# import country_converter as coco
+
+def load_datasets():
+    try:
+        image_dataset = load_dataset("Shresht-Venkat/Adverserial_Cultural-Images")
+        flag_dataset = load_dataset("Shresht-Venkat/Country-Flags")
+        print("Datasets loaded successfully after cache clearing!")
+        return image_dataset, flag_dataset
+    except NotImplementedError as e:
+        print(f"Still encountering an error: {e}")
 
 
+# ------------------------------------------------------------------
+# 1. master mapping supplied by you
+flag_dict = {
+    "Bolivia": "Bolivia, Plurinational State of",
+    "Cabo Verde": "Cape Verde",
+    "Czechia": "Czech Republic",
+    "DR Congo": "Congo, the Democratic Republic of the",
+    "Falkland Islands": "Falkland Islands (Malvinas)",
+    "Heard and McDonald Islands": "Heard Island and McDonald Islands",
+    "Iran": "Iran, Islamic Republic of",
+    "Kyrgyz Republic": "Kyrgyzstan",
+    "Micronesia, Fed. Sts.": "Micronesia, Federated States of",
+    "Moldova": "Moldova, Republic of",
+    "Russia": "Russian Federation",
+    "Sint Maarten": "Sint Maarten (Dutch part)",
+    "South Georgia and South Sandwich Is.": (
+        "South Georgia and the South Sandwich Islands"
+    ),
+    "St. Barths": "Saint Barthelemy",
+    "St. Helena": "Saint Helena, Ascension and Tristan da Cunha",
+    "St. Kitts and Nevis": "Saint Kitts and Nevis",
+    "St. Lucia": "Saint Lucia",
+    "St. Pierre and Miquelon": "Saint Pierre and Miquelon",
+    "St. Vincent and the Grenadines": "Saint Vincent and the Grenadines",
+    "Syrian Arab Republic": "Syria",
+    "Tanzania": "Tanzania, United Republic of",
+    "Türkiye": "Turkey",
+    "United States of America": "United States",
+    "Venezuela": "Venezuela, Bolivarian Republic of",
+}
+
+# ------------------------------------------------------------------
+# 2. a single normalisation helper
+def normalize_country(name: str, mapping: dict = flag_dict) -> str:
+    """
+    Return the spelling that exists in the flag-dataset.
+    If *name* is a key in *mapping*, use the mapped value,
+    otherwise leave it unchanged.
+    """
+    return mapping.get(name, name)
 
 
-# Get the default cache directory
-cache_dir = os.path.expanduser("~/.cache/huggingface/datasets")
-print(f"Hugging Face dataset cache directory: {cache_dir}")
-# After trying the above, attempt to load the dataset again
-try:
-    image_dataset = load_dataset("Shresht-Venkat/Adverserial_Cultural-Images")
-    flag_dataset = load_dataset("Shresht-Venkat/Country-Flags")
-    print("Datasets loaded successfully after cache clearing!")
-except NotImplementedError as e:
-    print(f"Still encountering an error: {e}")
+DELETE_LIST = [
+    'Aland Islands', 'Holy See (Vatican City State)','Bonaire, Saint Eustatius and Saba',
+    'British Virgin Islands','Congo Republic','Eswatini','Guam','Macau','Taiwan',
+    'Saint-Martin',"St. Pierre and Miquelon",'United States Minor Outlying Islands',
+    'United States Virgin Islands'
+]
 
 
-# Initialize converter
-cc = coco.CountryConverter()
+# ------------------------------------------------------------------
+# 3. build continent / sub-region look-ups with *normalised* names
+def create_geo_dictionaries(delete_list=None):
+    """
+    Returns:
+        continent_dict[continent]  -> list of country names
+        subregion_dict[subregion] -> list of country names
+    """
+    if delete_list is None:
+        delete_list = DELETE_LIST
+    cc = coco.CountryConverter()
+    raw_countries = set(cc.data["name_short"]) - set(delete_list)
 
-# Get all countries from coco
-all_countries = cc.data['name_short']
+    continent_dict, subregion_dict = {}, {}
 
-# Create continent and subregion dictionaries
-continent_dict = {}
-subregion_dict = {}
+    for c in raw_countries:
+        country = normalize_country(c)  # *** single point of truth ***
+        try:
+            continent = cc.convert(names=c, to="continent")
+            subregion = cc.convert(names=c, to="UNregion")
+        except Exception:
+            # skip corner-cases the converter can’t handle
+            continue
 
-for country in all_countries:
-    # Replace name if needed
-    display_name = "United States of America" if country == "United States" else country
-    display_name = 'Russia' if country == 'Russian Federation' else country
-    display_name = 'European Union' if country == 'Europe' else country
+        continent_dict.setdefault(continent, []).append(country)
+        subregion_dict.setdefault(subregion, []).append(country)
 
-    continent = cc.convert(names=country, to='continent')
-    subregion = cc.convert(names=country, to='UNregion')
-
-    # Build continent dict
-    if continent not in continent_dict:
-        continent_dict[continent] = []
-    continent_dict[continent].append(display_name)
-
-    # Build subregion dict
-    if subregion not in subregion_dict:
-        subregion_dict[subregion] = []
-    subregion_dict[subregion].append(display_name)
-
-# Sort entries (optional)
-for d in [continent_dict, subregion_dict]:
-    for region in d:
-        d[region].sort()
+    return continent_dict, subregion_dict
 
 
-
-
-
-
-
-def generate_q1_options_from_metadata(
-    image: 'PIL.Image.Image',
-    countries: list,
-    cultures: list,
-    subregions: list,
-    continents: list,
+# ------------------------------------------------------------------
+# 4. Q-generation helpers – always work with normalised lists
+def generate_q1(
+    item,
     ans_geography: str,
     continent_dict: dict,
-    subregion_dict: dict
+    subregion_dict: dict,
 ):
-    answer_key = {}
-    options = []
-    mcq_dict = {}
+    """
+    One-answer MCQ:
+        – pick one country in same continent/sub-region but
+          NOT already present in the image's list.
+        – options = existing countries (+ distractor) + correct answer
+    """
+    countries = [normalize_country(c) for c in literal_eval(item["countries"])]
+    countries = [c for c in countries if c not in DELETE_LIST]
+    continents = literal_eval(item["continents"])
+    subregions = literal_eval(item["un_subregion"])
 
-    if ans_geography == 'continent':
-        region = continents[0]
-        source_pool = continent_dict.get(region, [])
-    elif ans_geography == 'subregion':
-        region = subregions[0]
-        source_pool = subregion_dict.get(region, [])
+    # ------------- choose the candidate pool -----------------
+    if ans_geography == "continent":
+        pool = set(continent_dict.get(continents[0], []))
+    elif ans_geography == "subregion":
+        pool = set(subregion_dict.get(subregions[0], []))
     else:
         raise ValueError("ans_geography must be 'continent' or 'subregion'")
 
-    # Filter out countries already in the image's country list
-    valid_options = list(set(source_pool) - set(countries))
-    if not valid_options:
-        return None, None  # No valid distractor, skip
+    pool -= set(countries)  # never repeat what’s already in the image
+    pool -= set(DELETE_LIST) # remove any countries that are in the delete list
+    if not pool:
+        return None, None  # give up if nothing to pick from
 
-    correct_option = random.choice(valid_options)
+    correct = random.choice(list(pool))
 
-    # Compose distractors based on how many countries are already known
-    if len(countries) == 1:
-        options = [countries[0], correct_option]
-    elif len(countries) == 2:
-        options = countries + [correct_option]
+    # ------------- compose and shuffle options ---------------
+    if len(countries) <= 2:
+        options = countries + [correct]
     else:
-        sampled = random.sample(countries, min(3, len(countries)))
-        options = sampled + [correct_option]
+        options = random.sample(countries, 2) + [correct]
 
     random.shuffle(options)
-    for i, option in enumerate(options):
-        mcq_dict[option] = chr(65 + i)
+    mcq = {opt: chr(65 + i) for i, opt in enumerate(options)}
 
-    # Use file_name or hash of image for tracking
-    identifier = getattr(image, 'filename', 'unknown_image')
-    answer_key[identifier] = mcq_dict[correct_option]
-
-    return mcq_dict, answer_key
+    img_id = getattr(item["image"], "filename", "unknown_image")
+    answer_key = {img_id: mcq[correct]}
+    return mcq, answer_key
 
 
-def generate_q2_options_from_metadata(
-    image: PIL.Image.Image,
-    countries: list,
-    cultures: list,
-    subregions: list,
-    continents: list,
+def generate_q2(
+    item,
     ans_geography: str,
     continent_dict: dict,
-    subregion_dict: dict
+    subregion_dict: dict,
 ):
-    answer_key = {}
-    mcq_dict_global = {}
+    """
+    Two-correct-answers version (select 2 countries in same region, etc.)
+    """
+    countries = [normalize_country(c) for c in literal_eval(item["countries"])]
+    countries = [c for c in countries if c not in DELETE_LIST]
+    continents = literal_eval(item["continents"])
+    subregions = literal_eval(item["un_subregion"])
 
-    # Select valid region list
-    if ans_geography == 'continent':
-        region = continents[0]
-        region_pool = set(continent_dict.get(region, [])) - set(countries)
-    elif ans_geography == 'subregion':
-        region = subregions[0]
-        region_pool = set(subregion_dict.get(region, [])) - set(countries)
+    if ans_geography == "continent":
+        pool = set(continent_dict.get(continents[0], []))
+    elif ans_geography == "subregion":
+        pool = set(subregion_dict.get(subregions[0], []))
     else:
         raise ValueError("ans_geography must be 'continent' or 'subregion'")
 
-    # If not enough distractors, skip
-    if len(region_pool) < 2:
+    pool -= set(countries)
+    pool -= set(DELETE_LIST) # remove any countries that are in the delete list
+    if len(pool) < 2:
         return None, None
 
-    correct_option1 = random.choice(list(region_pool))
-    correct_option2 = random.choice(list(region_pool - {correct_option1}))
-    correct_answers = [correct_option1, correct_option2]
+    correct1, correct2 = random.sample(list(pool), 2)
+    correct_set = {correct1, correct2}
 
-    # Build option list
-    if len(countries) == 1:
-        options = [countries[0], correct_option1, correct_option2]
-    elif len(countries) == 2:
-        options = countries + [correct_option1, correct_option2]
+    # options
+    if len(countries) <= 2:
+        options = countries + [correct1, correct2]
     else:
-        sampled = random.sample(countries, min(3, len(countries)))
-        options = sampled + [correct_option1, correct_option2]
+        options = random.sample(countries, 2) + [correct1, correct2]
 
     random.shuffle(options)
+    mcq = {normalize_country(opt): chr(65 + i) for i, opt in enumerate(options)}
 
-    # Map options to choices A, B, C...
-    mcq_dict = {option: chr(65 + i) for i, option in enumerate(options)}
-
-    # Use file_name or some fallback identifier
-    identifier = getattr(image, 'filename', 'unknown_image')
-    mcq_dict_global[identifier] = mcq_dict
-    answer_key[identifier] = [mcq_dict[opt] for opt in correct_answers]
-
-    return mcq_dict_global[identifier], answer_key
-
-
+    img_id = getattr(item["image"], "filename", "unknown_image")
+    answer_key = {img_id: [mcq[c] for c in correct_set]}
+    return mcq, answer_key

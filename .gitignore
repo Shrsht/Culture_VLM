@@ -1,0 +1,9 @@
+# MacOS junk files
+.DS_Store
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env

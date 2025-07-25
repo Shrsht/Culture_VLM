@@ -1,0 +1,13 @@
+{
+  "id": 0,
+  "question": "\n                \"You are an expert on cultures, Given an image and a set of flags, connect the flags to\" \n                \"the culture depicted given image and how well the flag represents a particular culture.\" \n                \"Examine the cultural context in the following image. From the list of flags below, select\" \n                \"the flag that least represents the culture depicted in this particular image \"\n                \"Provide your answer as only the letter of your chosen option, followed by the flag name,\"\n                \"(e.g., 'A. Flag Name').\n\n\"\n                \"Flags:\n\"\n                \"{'Laos': 'A', 'Thailand': 'B', 'Indonesia': 'C'} \n\n\"\n                \"Your Answer:\"\n                f",
+  "answer_key": {
+    "unknown_image": "C"
+  },
+  "response": "\n\"You are an expert on cultures, Given an image and a set of flags, connect the flags to\" \n                \"the culture depicted given image and how well the flag represents a particular culture.\" \n                \"Examine the cultural context in the following image. From the list of flags below, select\" \n                \"the flag that least represents the culture depicted in this particular image \"\n                \"Provide your answer as only the letter of your chosen option, followed by the flag name,\"\n                \"(e.g., 'A. Flag Name').\n\n\"\n                \"Flags:\n\"\n                \"{'Laos': 'A', 'Thailand': 'B', 'Indonesia': 'C'} \n\n\"\n                \"Your Answer:\"\n                f\n                \"A. Laos\"",
+  "options": {
+    "Laos": "A",
+    "Thailand": "B",
+    "Indonesia": "C"
+  }
+}
